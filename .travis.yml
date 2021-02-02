@@ -1,0 +1,18 @@
+services:
+- docker
+install: make build
+stages:
+- name: echo
+- name: publish
+  if: branch = main AND type != pull_request
+jobs:
+  include:
+  - stage: echo
+    script: echo
+  - stage: publish
+    name: Publish production image
+    script:
+    - docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD" quay.io
+    - make publish
+env:
+  global:
