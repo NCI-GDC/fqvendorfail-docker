@@ -1,10 +1,13 @@
 VERSION = 1.0.0
 DOCKER_REPO = fqvendorfail
 
+COMMIT := $(shell git rev-parse HEAD)
 SHORT_HASH := $(shell git rev-parse --short HEAD)
 DOCKER_URL := quay.io/ncigdc
 DOCKER_IMAGE := ${DOCKER_URL}/${DOCKER_REPO}:${VERSION}
-DOCKER_IMAGE_HASH := ${DOCKER_URL}/${DOCKER_REPO}:${VERSION}-${SHORT_HASH}
+DOCKER_IMAGE_SHORT := ${DOCKER_URL}/${DOCKER_REPO}:${VERSION}-${SHORT_HASH}
+DOCKER_IMAGE_COMMIT := ${DOCKER_URL}/${DOCKER_REPO}:${COMMIT}
+DOCKER_IMAGE_LATEST := ${DOCKER_URL}/${DOCKER_REPO}:latest
 
 .PHONY: version version-* name
 name:
@@ -31,11 +34,18 @@ build-docker:
 	docker build . \
 		--file ./Dockerfile \
 		--build-arg VERSION=${VERSION} \
-		-t "${DOCKER_IMAGE}" \
-		-t "${DOCKER_IMAGE_HASH}"
+		-t "${DOCKER_IMAGE_COMMIT}" \
+		-t "${DOCKER_IMAGE_LATEST}"
 
-.PHONY: publish
+.PHONY: publish publish-*
 publish: docker-login
+	docker push ${DOCKER_IMAGE_COMMIT}
+
+publish-staging: publish
+	docker tag ${DOCKER_IMAGE_COMMIT} ${DOCKER_IMAGE_SHORT}
+	docker push ${DOCKER_IMAGE_SHORT}
+
+publish-release: publish
+	docker tag ${DOCKER_IMAGE_COMMIT} ${DOCKER_IMAGE}
 	docker push ${DOCKER_IMAGE}
-	docker push ${DOCKER_IMAGE_HASH}
 
