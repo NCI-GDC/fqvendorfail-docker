@@ -1,29 +1,51 @@
-# Template Makefile for repositories with one or more Docker images
+VERSION = 1.0.0
+DOCKER_REPO = fqvendorfail
 
-REPO = bio-software-template # Change me
+COMMIT := $(shell git rev-parse HEAD)
+SHORT_HASH := $(shell git rev-parse --short HEAD)
+DOCKER_URL := quay.io/ncigdc
+DOCKER_IMAGE := ${DOCKER_URL}/${DOCKER_REPO}:${VERSION}
+DOCKER_IMAGE_SHORT := ${DOCKER_URL}/${DOCKER_REPO}:${VERSION}-${SHORT_HASH}
+DOCKER_IMAGE_COMMIT := ${DOCKER_URL}/${DOCKER_REPO}:${COMMIT}
+DOCKER_IMAGE_LATEST := ${DOCKER_URL}/${DOCKER_REPO}:latest
 
-.PHONY: init init-*
+.PHONY: version version-* name
+name:
+	@echo ${NAME}
 
-init: init-hooks init-secrets
+version:
+	@echo --- VERSION: ${VERSION} ---
 
-init-hooks:
-	@echo
-	pre-commit install
-
-init-secrets:
-	@echo
-	detect-secrets scan --update .secrets.baseline
-	detect-secrets audit .secrets.baseline
+version-docker:
+	@echo ${DOCKER_IMAGE_COMMIT}
+	@echo ${DOCKER_IMAGE}
 
 .PHONY: docker-*
 docker-login:
 	@echo
-	docker login -u="${QUAY_USERNAME}" -p="${QUAY_PASSWORD}" quay.io
+	docker login -u=${QUAY_USERNAME} -p=${QUAY_PASSWORD} quay.io
 
-.PHONY: build
-build:
-	@bash build.sh build
+.PHONY: build build-*
+build: build-docker
 
-.PHONY: publish
-publish:
-	@bash build.sh publish
+build-docker: docker-login
+	@echo
+	@echo -- Building docker --
+	docker build . \
+		--file ./Dockerfile \
+		--build-arg VERSION=${VERSION} \
+		-t "${DOCKER_IMAGE_COMMIT}" \
+		-t "${DOCKER_IMAGE_LATEST}"
+
+.PHONY: publish publish-*
+publish: docker-login
+	docker push ${DOCKER_IMAGE_COMMIT}
+
+publish-staging: publish
+	docker tag ${DOCKER_IMAGE_COMMIT} ${DOCKER_IMAGE_SHORT}
+	docker push ${DOCKER_IMAGE_SHORT}
+
+publish-release: publish
+	docker tag ${DOCKER_IMAGE_COMMIT} ${DOCKER_IMAGE}
+	docker push ${DOCKER_IMAGE}
+
