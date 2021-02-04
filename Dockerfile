@@ -1,4 +1,4 @@
-FROM quay.io/ncigdc/bio-alpine:latest
+FROM quay.io/ncigdc/bio-alpine:latest as build
 
 RUN apk add make build-base zlib-dev
 
@@ -10,7 +10,10 @@ RUN cd /opt \
 	&& ls /opt \
 	&& tar xvf v1.3.tar.gz \
 	&& ls /opt \
-	&& make \
-	&& ln -s /opt/fqvendorfail /bin/fqvendorfail
+	&& make
 
-ENTRYPOINT ["fqvendorfail"]
+FROM quay.io/ncigdc/bio-alpine
+
+COPY --from=build /opt /opt
+
+ENTRYPOINT ["/opt/fqvendorfail"]
